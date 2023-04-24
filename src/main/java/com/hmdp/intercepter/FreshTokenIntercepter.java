@@ -28,16 +28,14 @@ public class FreshTokenIntercepter implements HandlerInterceptor {
         //获取header获取用户的！token
         String token = request.getHeader("authorization");
         if(StrUtil.isBlank(token)){
-            response.setStatus(401);
-            return false;
+            return true;
         }
         //从redis中获取用户信息
         String key = LOGIN_USER_KEY+token;
         Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(key);
         //判断user是否为空
         if(userMap.isEmpty()){
-            response.setStatus(401);
-            return false;
+            return true;
         }
         //将userMap转化为实体类
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
