@@ -11,8 +11,6 @@ import com.hmdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisData;
-import netscape.javascript.JSObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,17 +46,17 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     public Result queryById(Long id) {
         //防止穿透
         //Shop shop = PassThrought(id);
-        //Shop shop = cacheClient
+        Shop shop = cacheClient
                     //.PassThrought(CACHE_SHOP_KEY,id,Shop.class,id2 -> getById(id2),CACHE_SHOP_TTL,TimeUnit.MINUTES);
                       //简写
-                      //.PassThrought(CACHE_SHOP_KEY,id,Shop.class,this::getById,CACHE_SHOP_TTL,TimeUnit.MINUTES);
+                      .PassThrought(CACHE_SHOP_KEY,id,Shop.class,this::getById,CACHE_SHOP_TTL,TimeUnit.MINUTES);
         //用互斥防止击穿
         //Shop shop = Mutex(id);
 
         //用逻辑过期防止击穿
         //Shop shop = LogicalExpire(id);
-        Shop shop = cacheClient
-                .LogicalExpire(CACHE_SHOP_KEY,id,Shop.class,this::getById,CACHE_SHOP_TTL,TimeUnit.MINUTES);
+        //Shop shop = cacheClient
+                //.LogicalExpire(CACHE_SHOP_KEY,id,Shop.class,this::getById,CACHE_SHOP_TTL,TimeUnit.MINUTES);
         if(shop == null){
             return Result.fail("商铺信息不存在");
         }
@@ -78,37 +76,6 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     }
 
-
-
-
-
-    public Shop PassThrought(Long id) {
-        //拼接key的值
-        String key = CACHE_SHOP_KEY + id;
-        //根据id从redis中取
-        String shopJson = stringRedisTemplate.opsForValue().get(key);
-        //isNotBlank若字符串为"",null,"\t\n"会false，若为"abc"则为true；
-        if (StrUtil.isNotBlank(shopJson)) {
-            //反序列化
-            Shop shop = JSONUtil.toBean(shopJson, Shop.class);
-            return shop;
-        }
-        //判断是否命中的缓存中的空数据（空数据是为了防止缓存穿透效果的一个策略）
-        if (shopJson != null) {
-            return null;
-        }
-        //若为空，则去数据库中查找
-        Shop shop = getById(id);
-        //若数据库中没有
-        if (shop == null) {
-            //在缓存中写入有个空数据，防止缓存穿透
-            stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
-            return null;
-        }
-        //若数据库中有
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL, TimeUnit.MINUTES);
-        return shop;
-    }
 
     @Override
     @Transactional
